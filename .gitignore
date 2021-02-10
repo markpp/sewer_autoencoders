@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+*.gz
+lightning_logs/
+cifar-10-batches-py/
+pytorch/docker/markpp/
+*.pt
