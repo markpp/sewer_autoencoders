@@ -25,48 +25,20 @@ if __name__ == '__main__':
 
     seed_everything(1234)
 
-    parser = ArgumentParser()
 
-    # trainer args
-    parser = pl.Trainer.add_argparse_args(parser)
 
-    # model args
-    parser = BYOL.add_model_specific_args(parser)
-    args = parser.parse_args()
+    sys.path.append('../datasets/sewer/')
+    from datamodule import SewerDataModule
+    dm = SewerDataModule(data_dir='/home/datasets/sewer/',
+                         batch_size=64,
+                         image_size=256)
 
-    # pick data
-    dm = None
-
-    # init default datamodule
-    if args.dataset == 'cifar10':
-        dm = CIFAR10DataModule.from_argparse_args(args)
-        dm.train_transforms = SimCLRTrainDataTransform(32)
-        dm.val_transforms = SimCLREvalDataTransform(32)
-        args.num_classes = dm.num_classes
-
-    elif args.dataset == 'stl10':
-        dm = STL10DataModule.from_argparse_args(args)
-        dm.train_dataloader = dm.train_dataloader_mixed
-        dm.val_dataloader = dm.val_dataloader_mixed
-
-        (c, h, w) = dm.size()
-        dm.train_transforms = SimCLRTrainDataTransform(h)
-        dm.val_transforms = SimCLREvalDataTransform(h)
-        args.num_classes = dm.num_classes
-
-    elif args.dataset == 'imagenet2012':
-        dm = ImagenetDataModule.from_argparse_args(args, image_size=196)
-        (c, h, w) = dm.size()
-        dm.train_transforms = SimCLRTrainDataTransform(h)
-        dm.val_transforms = SimCLREvalDataTransform(h)
-        args.num_classes = dm.num_classes
-
-    model = BYOL(**args.__dict__)
+    model = BYOL()
 
     # finetune in real-time
-    online_eval = SSLOnlineEvaluator(dataset=args.dataset, z_dim=2048, num_classes=dm.num_classes)
+    #online_eval = SSLOnlineEvaluator(dataset=args.dataset, z_dim=2048)
 
-    trainer = pl.Trainer.from_argparse_args(args, gpus=1, max_steps=300000, resume_from_checkpoint='trained_models/epoch=431-step=8639.ckpt', callbacks=[online_eval])
+    trainer = pl.Trainer(gpus=1, max_steps=300000)
 
     trainer.fit(model, datamodule=dm)
 

@@ -8,10 +8,23 @@ from torchvision.datasets import ImageFolder
 import os, sys
 from glob import glob
 import cv2
-from PIL import Image
 
-sys.path.append('../')
-from sewer.dataset import SewerDataset
+#sys.path.append('../')
+from dataset import SewerDataset
+
+
+import albumentations as Augment
+
+def basic_transforms(img_height, img_width, image_pad=0):
+    return Augment.Compose([#Augment.ToGray(p=1.0),
+                            Augment.LongestMaxSize(max_size=360, always_apply=True),
+                            Augment.Rotate(limit=360, always_apply=True, border_mode=cv2.BORDER_CONSTANT),
+                            #Augment.Resize(img_height+image_pad, img_width+image_pad, interpolation=cv2.INTER_NEAREST, always_apply=True),
+                            Augment.RandomCrop(img_height, img_width, always_apply=True),
+                            #Augment.RandomResizedCrop(img_height, img_width, scale=(1.0, 1.0), always_apply=True),
+                            Augment.HorizontalFlip(p=0.5),
+                            Augment.RandomBrightnessContrast(p=1.0),
+                            ], p=1)#ToTensor()
 
 class SewerDataModule(pl.LightningDataModule):
     def __init__(self, data_dir, batch_size, image_size):
@@ -20,37 +33,25 @@ class SewerDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.image_size = image_size
 
-        self.transform = transforms.Compose(
-            [
-                #transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
-                transforms.Resize(image_size),
-                transforms.RandomCrop(image_size),
-                #transforms.Grayscale(),
-                transforms.RandomHorizontalFlip(p=0.5),
-                #transforms.RandomVerticalFlip(),
-                transforms.ToTensor(),
-            ]
-        )
-
     #def prepare_data():
         #download, unzip here. anything that should not be done distributed
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
-            self.data_train = SewerDataset(os.path.join(self.data_dir,'Train'), transform=self.transform)
-            self.data_val = SewerDataset(os.path.join(self.data_dir,'Val'), transform=self.transform)
+            self.data_train = SewerDataset(os.path.join(self.data_dir,'imgs/train'), transform=basic_transforms(img_height=self.image_size,img_width=self.image_size))
+            self.data_val = SewerDataset(os.path.join(self.data_dir,'imgs/val'), transform=basic_transforms(img_height=self.image_size,img_width=self.image_size))
 
     def train_dataloader(self):
-        return DataLoader(self.data_train, batch_size=self.batch_size, shuffle=True)
+        return DataLoader(self.data_train, batch_size=self.batch_size, shuffle=True, num_workers=12)
 
     def val_dataloader(self):
-        return DataLoader(self.data_val, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(self.data_val, batch_size=self.batch_size, shuffle=False, num_workers=12)
 
 
 if __name__ == '__main__':
 
     dm = SewerDataModule(data_dir='/home/markpp/datasets/sewer/',
-                         batch_size=32,
-                         image_size=64)
+                         batch_size=16,
+                         image_size=256)
 
     dm.setup()
 

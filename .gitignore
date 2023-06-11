@@ -132,3 +132,8 @@ lightning_logs/
 cifar-10-batches-py/
 pytorch/docker/markpp/
 *.pt
+output
+datasets
+bk
+*.npy
+
